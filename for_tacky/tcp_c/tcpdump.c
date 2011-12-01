@@ -4,16 +4,12 @@
 #include <netinet/in.h>
 #include <pcap.h>
 #include <string.h>
-/*
-#include <ctype.h>
-#include <errno.h>
-#include <sys/socket.h>
-*/
 #include <arpa/inet.h>
 
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN	6
 
+/* デバッグ用，1のときは全部のパケットを表示 */
 #define DEBUG_MODE 1
 
 /*
@@ -113,40 +109,36 @@ void print_ethaddr(u_char *args, const struct pcap_pkthdr *header, const u_char 
   size_ip = IP_HL(ip) * 4;
   tcp = (struct struct_tcp *)(packet + SIZE_ETHERNET + size_ip);
   int i;
+
+  // mac addr
+  printf("MAC address\n");
+  //送信元MACアドレス
+  for (i = 0; i < 6; ++i) {
+    printf("%02x", (int)eh->ether_shost[i]);
+    if(i < 5){
+      printf(":");
+    }
+  }
+  printf(" -> ");
+  //送信先MACアドレス
+  for (i = 0; i < 6; ++i) {
+    printf("%02x", (int)eh->ether_dhost[i]);
+    if(i < 5){
+      printf(":");
+    }
+  }
+  printf("\n");
+
+  // ip 
+  printf("IP address\n");
+  printf("%s -> %s\n", inet_ntoa(ip->ip_src), inet_ntoa(ip->ip_dst));
   
-  if(strcmp("192.168.100.101", inet_ntoa(ip->ip_src)) == 0 || strcmp("192.168.100.101", inet_ntoa(ip->ip_dst)) == 0){
-//  if (DEBUG_MODE || tcp->th_sport == 80 || tcp->th_sport == 443 || tcp->th_dport == 80 || tcp->th_dport == 443) {
+  // port
+  printf("PORT number\n");
+  printf("%d -> %d\n", tcp->th_sport, tcp->th_dport);
 
-    // mac addr
-    printf("MAC address\n");
-    //送信元MACアドレス
-    for (i = 0; i < 6; ++i) {
-      printf("%02x", (int)eh->ether_shost[i]);
-      if(i < 5){
-        printf(":");
-      }
-    }
-    printf(" -> ");
-    //送信先MACアドレス
-    for (i = 0; i < 6; ++i) {
-      printf("%02x", (int)eh->ether_dhost[i]);
-      if(i < 5){
-        printf(":");
-      }
-    }
-    printf("\n");
-
-    // ip 
-    printf("IP address\n");
-    printf("%s -> %s\n", inet_ntoa(ip->ip_src), inet_ntoa(ip->ip_dst));
-    
-    // port
-    printf("PORT number\n");
-    printf("%d -> %d\n", tcp->th_sport, tcp->th_dport);
-
-    // packet length
-    printf("packet length:%d\n", ip->ip_len);
-
-    printf("\n");
-}
+  // packet length
+  printf("packet length:%d\n", ip->ip_len);
+  printf("\n");
+  
 }

@@ -9,9 +9,6 @@
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN	6
 
-/* デバッグ用，1のときは全部のパケットを表示 */
-#define DEBUG_MODE 1
-
 /*
 libpcapのサンプル
 ubuntuとかdebianのひとは

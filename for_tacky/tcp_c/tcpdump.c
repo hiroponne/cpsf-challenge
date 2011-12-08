@@ -9,6 +9,8 @@
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN	6
 
+  void print_ethaddr(u_char *, const struct pcap_pkthdr *, const u_char *packet);
+
 /*
 libpcapのサンプル
 ubuntuとかdebianのひとは
@@ -76,36 +78,74 @@ main(int argc, char *argv[]) {
   char ebuf[PCAP_ERRBUF_SIZE];
   bpf_u_int32 localnet, netmask;
   pcap_handler callback;
-  void print_ethaddr(u_char *, const struct pcap_pkthdr *, const u_char *packet);
-  struct bpf_program;
-  
+  struct bpf_program bpf_p;
+
+  char *if_name;
+
+  if(argc < 2) {
+    strcpy(if_name, "en1");
+  } else {
+    strcpy(if_name, argv[1]);
+  }
+
   //macならen0とかubuntuならeth1とか
-  if ((pd = pcap_open_live("en1", snaplen, !pflag, timeout, ebuf)) == NULL) {
+  if ((pd = pcap_open_live(if_name, snaplen, !pflag, timeout, ebuf)) == NULL) {
     exit(1);
   }	
   
-  if (pcap_lookupnet("en1", &localnet, &netmask, ebuf) < 0) {
+  if (pcap_lookupnet(if_name, &localnet, &netmask, ebuf) < 0) {
     exit(1);
   }
+
+  // port 80 のパケットフィルター
+/*  if (pcap_compile(pd, &bpf_p, "port 80", 0, netmask) == -1) { 
+    fprintf(stderr,"Error calling pcap_compile\n");
+    exit(1); 
+  }
+  if (pcap_setfilter(pd, &bpf_p) == -1) { 
+    fprintf(stderr,"Error setting filter\n");
+    exit(1); 
+  }
+*/
+
+  // callbackにprint_ethaddrを入れてぶん回す
   callback = print_ethaddr;
   if (pcap_loop(pd, -1, callback, NULL) < 0) {
     exit(1);
   }
+
   pcap_close(pd);
   exit(0);
 }
 
 void print_ethaddr(u_char *args, const struct pcap_pkthdr *header, const u_char *packet){
+  
+  // packetの中身をstructのいろいろに入れる
   const struct struct_ethernet *eh;        
   const struct struct_ip *ip;
   const struct struct_tcp *tcp;
+
+  // ipとtcpのサイズ
   u_int size_ip;
   u_int size_tcp;
+
+  // packetのethernetの部分を入れる
   eh = (struct struct_ethernet *)(packet);
+
+  // packetのipの部分を入れるのとサイズ
   ip = (struct struct_ip *)(packet + SIZE_ETHERNET);
   size_ip = IP_HL(ip) * 4;
+
+  // packetのtcpの部分
   tcp = (struct struct_tcp *)(packet + SIZE_ETHERNET + size_ip);
+  
+  // for用
   int i;
+
+  // size_ip < 20 ならreturn;
+  if(size_ip < 20) {
+    return;
+  }
 
   // mac addr
   printf("MAC address\n");
@@ -132,7 +172,7 @@ void print_ethaddr(u_char *args, const struct pcap_pkthdr *header, const u_char 
   
   // port
   printf("PORT number\n");
-  printf("%d -> %d\n", tcp->th_sport, tcp->th_dport);
+  printf("%d -> %d\n", ntohs(tcp->th_sport), ntohs(tcp->th_dport));
 
   // packet length
   printf("packet length:%d\n", ip->ip_len);

@@ -9,7 +9,8 @@
 #define SIZE_ETHERNET 14
 #define ETHER_ADDR_LEN	6
 
-  void print_ethaddr(u_char *, const struct pcap_pkthdr *, const u_char *packet);
+// print packet datas
+void print_ethaddr(u_char *, const struct pcap_pkthdr *, const u_char *packet);
 
 /*
 libpcapのサンプル
@@ -20,42 +21,49 @@ gcc for_cpsf.c -lpcap
 詳しくはここにかいてあるので宛先が80番ポートのTCPパケットだけ表示するプログラムを書いてください．
 */
 
+/**
+ヘッダーの詳細はここを参考にした
+http://net-newbie.com/tcpip/packets.html
+後の値はサイズとヘッダー内の合計サイズ
+*/
 //イーサネットヘッダ
 struct struct_ethernet {
-  u_char  ether_dhost[ETHER_ADDR_LEN];
-  u_char  ether_shost[ETHER_ADDR_LEN];
-  u_short ether_type;
+  u_char  ether_dhost[ETHER_ADDR_LEN];  /* 6, 宛先のMAC addr */
+  u_char  ether_shost[ETHER_ADDR_LEN];  /* 6(12), 送信元のMAC addr */
+  u_short ether_type; /* 2(14), フレムタイプ */
 };
 
 // ip header
 struct struct_ip {
-  u_char ip_vhl;
-  u_char ip_tos;
-  u_short ip_len;
-  u_short ip_id;
-  u_short ip_off;
+  u_char ip_vhl;  /* 1, パケットのバージョン(前4bit)とヘッダー長(後4bit) */
+  u_char ip_tos;  /* 1(2), サービスのタイプ */
+  u_short ip_len; /* 2(4), IPパケット全体の長さ */
+  u_short ip_id;  /* 2(6), データグラムの識別子 */
+  u_short ip_off; /* 2(8), フラグとフラグメントオフセット */
   #define IP_RF 0x8000
   #define IP_DF 0x4000
   #define IP_MF 0x2000
   #define IP_OFFMASK 0x1fff
-  u_char ip_ttl;
-  u_char ip_p;
-  u_short ip_sum;
-  struct in_addr ip_src, ip_dst;
+  u_char ip_ttl;  /* 1(9), パケットの生存時間 */
+  u_char ip_p;  /* 1(10), プロトコル */
+  u_short ip_sum; /* 2(12), ipヘッダーのチェックサム */
+  struct in_addr ip_src;  /* 4(16), 送信元のipアドレス */
+  struct in_addr ip_dst;  /* 4(20), 宛先のipアドレス */
 };
-#define IP_HL(ip) (((ip)->ip_vhl) & 0x0f)
-#define IP_V(ip)  (((ip)->ip_vhl) >> 4)
+/* ip_vhlの前4bit分と後4bit分の値 */
+#define IP_HL(ip) (((ip)->ip_vhl) & 0x0f) /* バージョン情報,後4bit分 */
+#define IP_V(ip)  (((ip)->ip_vhl) >> 4) /* バケットlength，前4bit分 */
 
 // tcp headera
 typedef u_int tcp_seq;
 struct struct_tcp {
-  u_short th_sport;
-  u_short th_dport;
-  tcp_seq th_seq;
-  tcp_seq th_ack;
-  u_char th_offx2;
+  u_short th_sport; /* 2, 送信元のport */
+  u_short th_dport; /* 2(4), 宛先のport */
+  tcp_seq th_seq; /* 4(8), シーケンス番号 */
+  tcp_seq th_ack; /* 4(12), ack番号 */
+  u_char th_offx2;  /* 1(13), データオフセット */
   #define TH_OFF(th)  (((th)->th_offx2 & 0xf0) >> 4)
-  u_char th_flags;
+  u_char th_flags; /* 1(14), フラグ */
   #define TH_FIN 0x01
   #define TH_SYN 0x02
   #define TH_RST 0x04
@@ -65,9 +73,9 @@ struct struct_tcp {
   #define TH_ECE 0x40
   #define TH_CWR 0x80
   #define TH_FLAGS (TH_FIN|TH_SYN|TH_RST|TH_ACK|TH_URG|TH_ECE|TH_CWR)
-  u_short th_win;
-  u_short th_sum;
-  u_short th_urp;
+  u_short th_win; /* 2(16), ウィンドウ */
+  u_short th_sum; /* 2(18), チェックサム */
+  u_short th_urp; /* 緊急ポインタ */
 };
 
 main(int argc, char *argv[]) {
@@ -80,15 +88,14 @@ main(int argc, char *argv[]) {
   pcap_handler callback;
   struct bpf_program bpf_p;
 
+  // 引数がコマンドラインからifデバイス名を指定 */
   char *if_name;
-
   if(argc < 2) {
     strcpy(if_name, "en1");
   } else {
     strcpy(if_name, argv[1]);
   }
 
-  //macならen0とかubuntuならeth1とか
   if ((pd = pcap_open_live(if_name, snaplen, !pflag, timeout, ebuf)) == NULL) {
     exit(1);
   }	

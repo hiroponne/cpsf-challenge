@@ -75,7 +75,7 @@ struct struct_tcp {
   #define TH_FLAGS (TH_FIN|TH_SYN|TH_RST|TH_ACK|TH_URG|TH_ECE|TH_CWR)
   u_short th_win; /* 2(16), ウィンドウ */
   u_short th_sum; /* 2(18), チェックサム */
-  u_short th_urp; /* 緊急ポインタ */
+  u_short th_urp; /* 2(20), 緊急ポインタ */
 };
 
 main(int argc, char *argv[]) {
@@ -96,10 +96,12 @@ main(int argc, char *argv[]) {
     strcpy(if_name, argv[1]);
   }
 
+  // デバイスをオープン
   if ((pd = pcap_open_live(if_name, snaplen, !pflag, timeout, ebuf)) == NULL) {
     exit(1);
   }	
-  
+
+  // ネットワークインタフェースの情報を取得
   if (pcap_lookupnet(if_name, &localnet, &netmask, ebuf) < 0) {
     exit(1);
   }
@@ -121,7 +123,9 @@ main(int argc, char *argv[]) {
     exit(1);
   }
 
+  // パケットをクローズ
   pcap_close(pd);
+
   exit(0);
 }
 
